@@ -11,3 +11,23 @@ dist_name: "{{ ansible_distribution | lower | replace('linux', '') }}"
 dist_version: "{{ ansible_distribution_major_version }}"
 dist_codename: "{{ ansible_lsb.codename | default() | lower }}"
 dist_pkg_mgr: "{{ ansible_pkg_mgr | lower }}"
+
+# 01 # Install
+##############################################################################
+
+vrrp_packages:
+  - "keepalived"
+
+# 02 # Configure
+##############################################################################
+
+vrrp_config: "/etc/keepalived/keepalived.conf"
+vrrp_service: "keepalived"
+
+vrrp_config_scripts: []
+vrrp_config_track_files: []
+vrrp_config_track_processes: []
+vrrp_config_sync_groups: []
+vrrp_config_instances: []
+vrrp_config_virtual_servers: []
+vrrp_config_virtual_server_groups: []

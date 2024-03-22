@@ -1,0 +1,40 @@
+# code: language=ansible
+---
+
+- name: "VRRP | Configure | Custom check scripts"
+  ansible.builtin.template:
+    src: "keepalived/keepalived.conf.j2"
+    dest: "{{ vrrp_config }}"
+    owner: root
+    group: root
+    mode: 0644
+    backup: false
+
+  become: true
+  tags:
+    - vrrp
+    - vrrp-configure
+
+- name: "VRRP | Configure | keepalived.conf"
+  ansible.builtin.template:
+    src: "keepalived/keepalived.conf.j2"
+    dest: "{{ vrrp_config }}"
+    owner: root
+    group: root
+    mode: 0644
+    backup: false
+  notify: Restart VRRP
+  become: true
+  tags:
+    - vrrp
+    - vrrp-configure
+
+- name: "VRRP | Configure | Enable keepalived service"
+  ansible.builtin.service:
+    name: "{{ vrrp_service }}"
+    enabled: true
+    state: started
+  become: true
+  tags:
+    - vrrp
+    - vrrp-configure

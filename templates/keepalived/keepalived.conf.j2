@@ -1,0 +1,453 @@
+# Globals
+
+{% if vrrp_config_globals is defined and vrrp_config_globals | is_ne_list_dicts %}
+global_defs {
+{% for global in vrrp_config_globals %}
+   {{ global.key }} {{ global.value }}
+{% endfor %}
+}
+{% endif %}
+
+# VRRP Scripts
+
+{% if vrrp_config_scripts is defined and vrrp_config_scripts | is_ne_list_dicts %}
+{% for script in vrrp_config_scripts %}
+vrrp_script {{ script.name }} {
+
+  script "{{ script.check_script }}"
+
+  # Check every {{ details.interval | default(5) }} seconds (default: 5 seconds)
+  interval {{ script.interval | default(5) }}
+
+  # Require {{ details.fall | default(3) }} failures for KO (default: 3)
+  fall {{ script.fall | default(3) }}
+
+  # Require {{ details.rise | default(6) }} successes for OK (default: 6)
+  rise {{ script.rise | default(6) }}
+
+{% if script.weight is defined %}
+  # Adjust priority by this weight, (default: 0)
+  weight {{ script.weight | default(0) }}
+{% endif -%}
+
+{% if script.timeout is defined %}
+  # Allow scripts like ping to succeed, before timing out
+  timeout {{ script.timeout }}
+{% endif -%}
+
+{% if script.user is defined %}
+  # User/Group names to run script under.
+  user {{ script.user }}
+{% endif -%}
+
+}
+{% endfor %}
+{% endif %}
+
+# VRRP Track Files
+
+{% if vrrp_config_track_files is defined and vrrp_config_track_files | is_ne_list_dicts %}
+{% for track_file in vrrp_config_track_files %}
+vrrp_track_file {{ track_file.name }} {
+
+  file "{{ track_file.file }}"
+
+  weight {{ track_file.weight | default(1) }} # multiply with weight in file (default: 1, i.e. literal value from file)
+
+{% if track_file.init_file | default(false) | bool %}
+  init_file {% if track_file.init_file_value is defined %}{{ track_file.init_file_value }}{% endif %}{% if track_file.init_file_overwrite | default(false) | bool %}overwrite{% endif %}
+{% endif -%}
+
+}
+{% endfor %}
+{% endif %}
+
+# VRRP Track Processes
+
+{% if vrrp_config_track_processes is defined and vrrp_config_track_processes | is_ne_list_dicts %}
+{% for track_process in vrrp_config_track_processes %}
+vrrp_track_process {{ track_process.name }} {
+
+  # See man 5 keepalived.conf for quotes handling
+  process {{ track_process.process }}
+
+  # Multiply with weight in process (default: 1, i.e. literal value from process)
+  weight {{ track_process.weight | default(1) | int }}
+
+{% if track_process.param_match is defined %}
+  param_match {{ track_process.param_match }}
+{% endif -%}
+
+{% if track_process.quorum is defined %}
+  quorum {{ track_process.quorum | int }}
+{% endif %}
+
+{% if track_process.quorum_max is defined %}
+  quorum_max {{ track_process.quorum_max | int }}
+{% endif -%}
+
+{% if track_process.fork_delay is defined %}
+  fork_delay {{ track_process.fork_delay | int }}
+{% endif -%}
+
+{% if track_process.terminate_delay is defined %}
+  terminate_delay {{ track_process.terminate_delay | int }}
+{% endif -%}
+
+{% if track_process.delay is defined %}
+  delay {{ track_process.delay | int }}
+{% endif -%}
+
+{% if track_process.full_command | default(false) | bool %}
+  full_command
+{% endif -%}
+
+}
+{% endfor %}
+{% endif %}
+
+# VRRP Sync Groups
+
+{% if vrrp_config_sync_groups is defined and vrrp_config_sync_groups | is_ne_list_dicts %}
+{% for sync_group in vrrp_config_sync_groups %}
+vrrp_sync_group {{ sync_group.name }} {
+
+  group {
+    {% for group in sync_group.groups %}{{ group }}
+    {% endfor %}
+  }
+
+{% if sync_group.notify_script is defined %}
+  notify "{{ sync_group.notify_script }}"
+{% endif -%}
+
+{% if sync_group.notify_master is defined %}
+  notify_master "{{ sync_group.notify_master }}"
+{% endif -%}
+
+{% if sync_group.notify_backup is defined %}
+  notify_backup "{{ sync_group.notify_backup }}"
+{% endif -%}
+
+{% if sync_group.notify_fault is defined %}
+  notify_fault "{{ sync_group.notify_fault }}"
+{% endif -%}
+
+{% if sync_group.global_tracking is defined and sync_group.global_tracking | bool %}
+  # All VRRP share the same tracking config.
+  global_tracking
+{% endif -%}
+
+{% if sync_group.track_scripts is defined %}
+  track_script {
+    {% for track_script in sync_group.track_scripts %}{{ track_script }}
+    {% endfor %}
+  }
+{% endif -%}
+
+{% if sync_group.track_files is defined %}
+  track_file {
+    {% for track_file in sync_group.track_files %}{{ track_file }}
+    {% endfor %}
+  }
+{% endif -%}
+
+{% if sync_group.track_interfaces is defined %}
+  track_interface {
+    {% for track_interface in sync_group.track_interfaces %}{{ track_interface }}
+    {% endfor %}
+  }
+{% endif -%}
+
+{% if sync_group.track_processes is defined %}
+  track_process {
+    {% for track_process in sync_group.track_processes %}{{ track_process }}
+    {% endfor %}
+  }
+{% endif -%}
+
+}
+{% endfor %}
+{% endif %}
+
+# VRRP Instances
+
+{% if vrrp_config_instances is defined and vrrp_config_instances | is_ne_list_dicts %}
+{% for instance in vrrp_config_instances -%}
+
+vrrp_instance {{ instance.name }} {
+
+  interface {{ instance.interface }}
+
+  state {{ instance.state }}
+
+  virtual_router_id {{ instance.virtual_router_id }}
+
+  priority {{ instance.priority }}
+
+{% if instance.use_vmac is defined and instance.use_vmac | bool %}
+  # Use virtual MAC address
+  use_vmac
+{% endif -%}
+
+{% if instance.vmac_xmit_base is defined and instance.vmac_xmit_base | bool %}
+  # Use physical MAC address for communication
+  vmac_xmit_base
+{% endif -%}
+
+{% if instance.nopreempt is defined and instance.nopreempt | bool %}
+  # Override VRRP RFC preemption default
+  nopreempt
+{% endif -%}
+
+{% if instance.preempt_delay is defined %}
+  # Seconds after startup until preemption. 0 (default) to 1,000.
+  preempt_delay {{ instance.preempt_delay }}
+{% endif -%}
+
+{% if instance.advert_int is defined %}
+  advert_int {{ instance.advert_int }}
+{% endif -%}
+
+{% if instance.dont_track_primary is defined and instance.dont_track_primary | bool %}
+  # Override VRRP RFC dont_track_primary default
+  dont_track_primary
+{% endif -%}
+
+{% if instance.accept is defined %}{% if instance.accept | bool %}
+  accept
+{% else %}
+  no_accept
+{% endif %}{% endif -%}
+
+{% if instance.native_ipv6 is defined and instance.native_ipv6 | bool %}
+  native_ipv6
+{% endif -%}
+
+{% if instance.authentication_password is defined %}
+  authentication {
+    auth_type {{ instance.authentication_type | default('PASS') }}
+    auth_pass {{ instance.authentication_password }}
+  }
+{% endif -%}
+
+{% if instance.unicast_src_ip is defined and instance.unicast_peers | is_ne_str %}
+  unicast_src_ip {{ instance.unicast_src_ip }}
+  unicast_peer {
+    {% for peer in instance.unicast_peers %}{{ peer }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.virtual_ipaddress is defined and instance.virtual_ipaddress | is_ne_list %}
+  virtual_ipaddress {
+    {% for vip in instance.virtual_ipaddress %}{{ vip }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.virtual_ipaddresses_excluded is defined and instance.virtual_ipaddresses_excluded | is_ne_list %}
+  virtual_ipaddress_excluded {
+    {% for vip in instance.virtual_ipaddresses_excluded %}{{ vip }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.virtual_routes is defined and instance.virtual_routes | is_ne_list %}
+  virtual_routes {
+    {% for route in instance.virtual_routes %}{{ route }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.virtual_rules is defined and instance.virtual_rules | is_ne_list %}
+  virtual_rules {
+    {% for rule in instance.virtual_rules %}{{ rule }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.track_scripts is defined and instance.track_scripts | is_ne_list %}
+  track_script {
+    {% for track_script in instance.track_scripts %}{{ track_script }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.track_files is defined and instance.track_files | is_ne_list %}
+  track_file {
+    {% for track_file in instance.track_files %}{{ track_file }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.track_interfaces is defined and instance.track_interfaces | is_ne_list %}
+  track_interface {
+    {% for track_interface in instance.track_interfaces %}{{ track_interface }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.track_process is defined %}
+  track_process {
+    {% for track_process in instance.track_process %}{{ track_process }}
+{% endfor %}
+  }
+{% endif -%}
+
+{% if instance.notify_script is defined %}
+  notify "{{ instance.notify_script }}"
+{% endif -%}
+
+{% if instance.notify_master is defined %}
+  notify_master "{{ instance.notify_master }}"
+{% endif -%}
+
+{% if instance.notify_master_rx_lower_pri is defined %}
+  notify_master_rx_lower_pri "{{ instance.notify_master_rx_lower_pri }}"
+{% endif -%}
+
+{% if instance.notify_backup is defined %}
+  notify_backup "{{ instance.notify_backup }}"
+{% endif -%}
+
+{% if instance.notify_fault is defined %}
+  notify_fault "{{ instance.notify_fault }}"
+{% endif -%}
+
+{% if instance.notify_stop is defined %}
+  notify_stop "{{ instance.notify_stop }}"
+{% endif -%}
+
+{% if instance.smtp_alert is defined and instance.smtp_alert | bool %}
+  smtp_alert # Send email notification during state transition
+{% endif -%}
+
+}
+{% endfor %}
+{% endif %}
+
+# VRRP Virtual Servers
+
+{% if vrrp_config_virtual_servers is defined and vrrp_config_virtual_servers | is_ne_list_dicts %}
+{% for virtual_server in vrrp_config_virtual_servers %}
+virtual_server {{ virtual_server.ip }} {{ virtual_server.port }} {
+
+{% if virtual_server.ip_family is defined %}
+  ip_family {{ virtual_server.ip_family | default('inet', true) }}
+{% endif -%}
+
+{% if virtual_server.delay_loop is defined %}
+  delay_loop {{ virtual_server.delay_loop }}
+{% endif -%}
+
+  lvs_sched {{ virtual_server.lvs_sched | default ('rr') }}
+
+  lvs_method {{ virtual_server.lvs_method | default ('DR') }}
+
+{% if virtual_server.persistence_timeout is defined %}
+  persistence_timeout {{ virtual_server.persistence_timeout }}
+{% endif -%}
+
+  protocol {{ virtual_server.protocol | default ('TCP') }}
+{% if virtual_server.ha_suspend is defined and virtual_server.ha_suspend %}
+  ha_suspend
+{% endif -%}
+
+{% if virtual_server.inhibit_on_failure is defined and virtual_server.inhibit_on_failure %}
+  inhibit_on_failure
+{% endif -%}
+
+  {% for real_server in virtual_server.real_servers %}
+  real_server {{ real_server.ip }} {{ real_server.port }} {
+
+{% if real_server.weight is defined %}
+    weight {{ real_server.weight | int }}
+{% endif -%}
+
+{% if real_server.uthreshold is defined %}
+    uthreshold {{ real_server.uthreshold | int }}
+{% endif -%}
+
+{% if real_server.lthreshold is defined %}
+    lthreshold {{ real_server.lthreshold | int }}
+{% endif -%}
+
+    {% include './templates/keepalived/checks.j2' %} # ???
+  }
+  {% endfor %}
+
+  {% if virtual_server.sorry_server is defined %}
+  sorry_server {{ virtual_server.sorry_server.ip }} {{ virtual_server.sorry_server.port }}
+  {% endif %}
+
+}
+{% endfor %}
+{% endif %}
+
+# VRRP Virtual Server Groups
+
+{% if vrrp_config_virtual_server_groups is defined and vrrp_config_virtual_server_groups | is_ne_list_dicts %}
+{% for virtual_server_group in vrrp_config_virtual_server_groups %}
+virtual_server_group {{ virtual_server_group.name }} {
+
+  {% for virtual_server_group_vip in virtual_server_group.vips %}
+  {{ virtual_server_group_vip.ip }} {{ virtual_server_group_vip.port }}
+  {% endfor %}
+
+  {% if virtual_server_group.fwmark is defined %}
+  fwmark {{ virtual_server_group.fwmark }}
+  {% endif %}
+}
+
+virtual_server group {{ virtual_server_group.name }} {
+
+  {% set virtual_server = virtual_server_group %}
+
+{% if virtual_server_group.ip_family is defined %}
+  ip_family {{ virtual_server_group.ip_family | default('inet', true) }}
+{% endif -%}
+
+{% if virtual_server_group.delay_loop is defined %}
+  delay_loop {{ virtual_server_group.delay_loop }}
+{% endif -%}
+
+  lvs_sched {{ virtual_server_group.lvs_sched | default ('rr') }}
+
+  lvs_method {{ virtual_server_group.lvs_method | default ('DR') }}
+
+{% if virtual_server_group.persistence_timeout is defined %}
+  persistence_timeout {{ virtual_server_group.persistence_timeout }}
+{% endif -%}
+
+  protocol {{ virtual_server_group.protocol | default ('TCP') }}
+
+{% if virtual_server_group.ha_suspend is defined and virtual_server_group.ha_suspend %}
+  ha_suspend
+{% endif -%}
+
+{% if virtual_server_group.inhibit_on_failure is defined and virtual_server_group.inhibit_on_failure %}
+  inhibit_on_failure
+{% endif -%}
+
+  {% for real_server in virtual_server_group.real_servers %}
+  real_server {{ real_server.ip }} {{ real_server.port }} {
+
+{% if real_server.weight is defined %}
+    weight {{ real_server.weight | int }}
+{% endif -%}
+
+{% if real_server.uthreshold is defined %}
+    uthreshold {{ real_server.uthreshold | int }}
+{% endif -%}
+
+{% if real_server.lthreshold is defined %}
+    lthreshold {{ real_server.lthreshold | int }}
+{% endif -%}
+
+    {% include './templates/keepalived/checks.j2' %} # ???
+  }
+  {% endfor %}
+}
+{% endfor %}
+{% endif %}

@@ -8,4 +8,3 @@ vrrp_always_packages:
   - "epel-release"
   - "python3-libselinux"
   - "python3-policycoreutils"
-

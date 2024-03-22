@@ -7,3 +7,19 @@
   ansible.builtin.include_tasks: "always/main.yml"
   tags:
     - always
+
+# 01 # Install
+
+- name: "VRRP | Install"
+  ansible.builtin.include_tasks: "install/{{ dist_pkg_mgr }}.yml"
+  tags:
+    - vrrp
+    - vrrp-install
+
+# 02 # Configure
+
+- name: "VRRP | Configure"
+  ansible.builtin.include_tasks: "configure/main.yml"
+  tags:
+    - vrrp
+    - vrrp-configure

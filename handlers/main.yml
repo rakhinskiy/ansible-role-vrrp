@@ -1,2 +1,8 @@
 # code: language=ansible
 ---
+
+- name: "Restart VRRP"
+  ansible.builtin.service:
+    name: "{{ vrrp_service }}"
+    state: restarted
+  become: true
