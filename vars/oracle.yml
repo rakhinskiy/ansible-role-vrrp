@@ -1,0 +1,10 @@
+---
+# code: language=ansible
+
+# 00 # Always
+
+vrrp_always_packages:
+  - "dnf-utils"
+  - "oracle-epel-release-el{{ dist_version }}"
+  - "python3-libselinux"
+  - "python3-policycoreutils"

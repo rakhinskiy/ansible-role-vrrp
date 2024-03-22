@@ -1,0 +1,9 @@
+# code: language=ansible
+---
+
+# 00 # Always
+
+- name: "VRRP | Always"
+  ansible.builtin.include_tasks: "always/main.yml"
+  tags:
+    - always
